@@ -24,52 +24,99 @@ import java.net.DatagramSocket;
 
 public class UDPserver
 {
-   private final static int PACKETSIZE = 100 ;
+	private final static int PACKETSIZE = 100 ;
 
-   public static void main( String args[] )
-   {
-      // Check the arguments
-      if( args.length != 1 )
-      {
-         System.out.println( "usage: DatagramServer port" ) ;
-         return ;
-      }
+	public static void main( String args[] )
+	{
+		// Check the arguments
+		if( args.length != 1 )
+		{
+			System.out.println( "usage: DatagramServer port" ) ;
+			return ;
+		}
 
-      try
-      {
-         // Convert the argument to ensure that is it valid
-         int port = Integer.parseInt( args[0] ) ;
+		try
+		{
+			// Convert the argument to ensure that is it valid
+			int port = Integer.parseInt( args[0] ) ;
 
-         // Construct the socket
-         DatagramSocket socket = new DatagramSocket( port ) ;
+			// Construct the socket
+			DatagramSocket socket = new DatagramSocket( port ) ;
 
-         System.out.println( "The server is ready..." ) ;
+			System.out.println( "The server is ready..." ) ;
 
 
-         for( ;; )
-         {
-            // Create a packet
-            DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
+			for( ;; )
+			{
+				// Create a packet
+				DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
 
-            // Receive a packet (blocking)
-            socket.receive( packet ) ;
+				// Receive a packet (blocking)
+				socket.receive( packet ) ;
 
-            // Print the packet
-            System.out.println( packet.getAddress() + " " + packet.getPort() + ": " + new String(packet.getData()) ) ;
+				// Print the packet
+				String receive_msg = new String(packet.getData()).trim();
+				System.out.println( packet.getAddress() + " " + packet.getPort() + ": " +  receive_msg) ;
 
-            // Return the packet to the sender
-             
-            DatagramPacket ack = new DatagramPacket("ACK: ".getBytes(), "ACK: ".getBytes().length, packet.getSocketAddress());
-            
-            socket.send( ack ) ;
-            socket.send( packet ) ;
-        }  
-     }
-     catch( Exception e )
-     {
-        System.out.println( e ) ;
-     }
-  }
+				/*
+				 * PSUEDO
+				 * if r_msg = "at" 
+				 * reply = {"status":"ACK"}
+				 * else, parse json and read ID
+				 * push json to NSCL according to ID
+				 * read next element and valve state from NSCL
+				 * reply = {"status":"ACK", "e":1, v:0}
+				 * exception json corrupt 
+				 * reply {"status":"ERR"}
+				 */
+				
+				String reply = null;
+				if(receive_msg == "at"){
+					reply = "{\"status\":\"ACK\"}";
+				}
+				else{
+					try{
+						System.out.println("ID = " + (Integer)getValueFromJSON("id", receive_msg));
+						reply = "{\"status\":\"ACK\",\"e\":true}";
+					}
+					catch(ClassCastException e){
+						reply = "{\"status\":\"ERR\"}";
+					}
+				}
+
+				// Return a reply packet to the sender
+				DatagramPacket ack = new DatagramPacket(reply.getBytes(), reply.getBytes().length, packet.getSocketAddress());
+				socket.send( ack ) ;
+				
+			}  
+		}
+		catch( Exception e )
+		{
+			System.out.println( e ) ;
+		}
+	}
+
+
+	private static Object getValueFromJSON(String key, String JSON){
+
+		JSONParser parser=new JSONParser();
+		try{
+			Object obj = parser.parse(JSON);
+			JSONArray array = new JSONArray();
+			array.add(obj);	
+			JSONObject jobj = (JSONObject)array.get(0);
+
+			return jobj.get(key);
+
+		}catch(ParseException pe){
+			System.out.println("position: " + pe.getPosition());
+			System.out.println(pe);
+
+			return "error";
+		}
+	}
+
+
 }
 
 
