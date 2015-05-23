@@ -19,13 +19,12 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
-import acza.sun.ee.geyserM2M.M2MHTTPClient;
+import acza.sun.ee.geyserM2M.SCLhttpClient;
 import acza.sun.ee.geyserM2M.M2MxmlFactory;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.LinkedList;
-
 
 public class UDPserver
 {
@@ -46,10 +45,9 @@ public class UDPserver
 		final String NIP_ID = args[2]; //(1)
 		final String APP_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications";
 		final String CONTAINER_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers";
-		final String CONTROL_CONTAINER_ID = "control_settings";
 		
-
-		M2MHTTPClient.post(APP_URI, M2MxmlFactory.registerApplication(NIP_ID));	//(1)
+		//Register NIP application with NSCL
+		SCLhttpClient.post(APP_URI, M2MxmlFactory.registerApplication(NIP_ID));	//(1)
 		
 		
 		try
@@ -95,24 +93,32 @@ public class UDPserver
 					try{
 						
 						Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
-						String data_container_id = geyser_id.toString();
+						String data_container_id = geyser_id + "_data";
+						String control_container_id = geyser_id +"_control_settings";
+						String data_content_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
+						String control_container_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + control_container_id + "/contentInstances";
+						
 						
 						//Case: New geyser ID detected
 						if(!active_ids.contains(geyser_id)){
 							active_ids.push(geyser_id);
 							System.out.println("New geyser join. ID = " + geyser_id);
-							M2MHTTPClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(data_container_id, (long)5));
+							SCLhttpClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(data_container_id, (long)5));
+							
+							//Add initialised control_settings container for external controller to post to.
+							SCLhttpClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(control_container_id, (long)2));
+							SCLhttpClient.post(control_container_uri, "{\"e\":\"unknown\"}");
 						}
 						
-						String content_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
-						M2MHTTPClient.post(content_uri, receive_msg);
+						//Post data point to NSCL
+						SCLhttpClient.post(data_content_uri, receive_msg);
 						
 						
 						//get element state from NSCL container
 						//if none available, return "{\"status\":\"ACK\",\"e\":unknown}";
-						
-						
-						reply = "{\"status\":\"ACK\",\"e\":true}";
+						String new_element_state = (String)getValueFromJSON("e", SCLhttpClient.get(control_container_uri).trim());	
+						reply = "{\"status\":\"ACK\",\"e\":"  + new_element_state + "}";
+						System.out.println("To geyser: " + reply);
 					}
 					catch(ClassCastException e){
 						reply = "{\"status\":\"ERR\"}";

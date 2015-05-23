@@ -1,9 +1,9 @@
 /* --------------------------------------------------------------------------------------------------------
- * DATE:	16 Apr 2015
+ * DATE:	18 Apr 2015
  * AUTHOR:	Cloete A.H
  * PROJECT:	M-Eng, Inteligent geyser M2M system.	
  * ---------------------------------------------------------------------------------------------------------
- * DESCRIPTION: An HTTP client-side interface, tailored to speak M2M.
+ * DESCRIPTION: 
  * ---------------------------------------------------------------------------------------------------------
  * PURPOSE: 
  * ---------------------------------------------------------------------------------------------------------
@@ -13,13 +13,20 @@ package acza.sun.ee.geyserM2M;
 
 import java.io.*;
 import java.net.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class M2MHTTPClient {
+import org.apache.commons.codec.binary.Base64;
 
-	public static void get(String getURI){
+public class SCLhttpClient {
+	
+
+public static String get(String getURI){
 		
+		String decoded_reply = null;
+	
 		try{
-			URL url = new URL(getURI);
+			URL url = new URL("http://" + getURI);
 
 			HttpURLConnection urlcon = (HttpURLConnection) url.openConnection();
 			urlcon.setRequestMethod("GET");	
@@ -33,16 +40,23 @@ public class M2MHTTPClient {
 			BufferedReader bin = new BufferedReader(in);
 			 */
 			
+			StringBuilder builder = new StringBuilder();
 			String line;
 			while((line = bin.readLine()) != null){
-				System.out.println(line);	//Debug reply
+				builder.append(line);
 			}
+			
+			String content64 =  parseSCLreply(builder.toString());
+			decoded_reply = new String(Base64.decodeBase64(content64.getBytes()));
+			
 
 		}catch (MalformedURLException e){
 			System.out.println(e);
 		}catch (IOException e2){
 			System.out.println(e2);
 		}
+
+		return decoded_reply;
 	}	
 	
 	
@@ -77,25 +91,46 @@ public class M2MHTTPClient {
 	}
 	
 	
+	private static String parseSCLreply(String sclXML)
+	{
+		//(1)
+		Pattern r1 = Pattern.compile("(?<=<om2m:content xmime:contentType=\"application\\/xml\">).*(?=<\\/om2m:content>)", Pattern.DOTALL);
+		Matcher m1 = r1.matcher(sclXML);
+		
+		if (m1.find( )) {
+			return m1.group(0);
+			
+		} else {
+			return "SCL: NO MATCH 1";
+		}
+	}
+	
+	
+	public static String parseInstanceContent(String obix, String name){
+		/*
+		 * Regex geyserID, Temp and element
+		 */
+		
+		//(1)
+		Pattern r1 = Pattern.compile("(?<=<str val=\").{2,15}(?=\" name=\"" + name +"\")", Pattern.DOTALL);
+		Matcher m1 = r1.matcher(obix);
+		
+		if (m1.find( )) {
+			return m1.group(0);
+			
+		} else {
+			return "oBIX: NO MATCH 1";
+		}
+	}
 	
 	
 }
-
-
 
 /*
  * ---------------------------------------------------------------------------------------------------------
  * NOTES:
  * 
-(1) 
-openStream() is shorthand for openConnection().getInputStream().
-openConnection() first returns a URLConnection object. Therefore you could have alternatively written as shown 
-in comment block. But then you would'nt be able to specify header content;
-
-
-(2) 
-A URL connection can be used for input and/or output. Setting the doOutput flag to true indicates that the 
-application intends to write data to the URL connection. Setting the doOutput flag to true indicates that 
-the application intends to write data to the URL connection.
+ * (1)
+ * Pattern r = Pattern.compile("(?<=whateverinfront).*(?=whateverattheback)")
  * ---------------------------------------------------------------------------------------------------------
  */

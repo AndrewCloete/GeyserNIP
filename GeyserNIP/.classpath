@@ -5,5 +5,6 @@
 	<classpathentry kind="lib" path="/home/andrew/workspace/JSONParser/lib/json-simple-1.1.1.jar"/>
 	<classpathentry kind="lib" path="/home/andrew/git/org.eclipse.om2m/org.eclipse.om2m.commons/target/classes"/>
 	<classpathentry kind="lib" path="/home/andrew/eclipse/plugins/org.apache.commons.logging_1.1.1.v201101211721.jar"/>
+	<classpathentry kind="lib" path="/home/andrew/eclipse/plugins/org.apache.commons.codec_1.4.0.v201209201156.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
