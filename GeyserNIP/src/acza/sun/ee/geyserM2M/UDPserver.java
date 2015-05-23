@@ -24,10 +24,13 @@ import acza.sun.ee.geyserM2M.M2MxmlFactory;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.util.LinkedList;
+
 
 public class UDPserver
 {
-	private final static int PACKETSIZE = 100 ;
+	private final static int PACKETSIZE = 100 ;	
+	private static LinkedList<Long> active_ids = new LinkedList<Long>();
 
 	public static void main( String args[] )
 	{
@@ -43,10 +46,11 @@ public class UDPserver
 		final String NIP_ID = args[2]; //(1)
 		final String APP_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications";
 		final String CONTAINER_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers";
-		final String CONTAINER_ID = "DATA";
-		final String CONTENT_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + CONTAINER_ID + "/contentInstances";
+		final String CONTROL_CONTAINER_ID = "control_settings";
 		
+
 		M2MHTTPClient.post(APP_URI, M2MxmlFactory.registerApplication(NIP_ID));	//(1)
+		
 		
 		try
 		{
@@ -89,7 +93,25 @@ public class UDPserver
 				}
 				else{
 					try{
-						System.out.println("ID = " + (Integer)getValueFromJSON("id", receive_msg));
+						
+						Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
+						String data_container_id = geyser_id.toString();
+						
+						//Case: New geyser ID detected
+						if(!active_ids.contains(geyser_id)){
+							active_ids.push(geyser_id);
+							System.out.println("New geyser join. ID = " + geyser_id);
+							M2MHTTPClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(data_container_id, (long)5));
+						}
+						
+						String content_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
+						M2MHTTPClient.post(content_uri, receive_msg);
+						
+						
+						//get element state from NSCL container
+						//if none available, return "{\"status\":\"ACK\",\"e\":unknown}";
+						
+						
 						reply = "{\"status\":\"ACK\",\"e\":true}";
 					}
 					catch(ClassCastException e){
