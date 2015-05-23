@@ -3,5 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="lib" path="/home/andrew/workspace/JSONParser/lib/json-simple-1.1.1.jar"/>
+	<classpathentry kind="lib" path="/home/andrew/git/org.eclipse.om2m/org.eclipse.om2m.commons/target/classes"/>
+	<classpathentry kind="lib" path="/home/andrew/eclipse/plugins/org.apache.commons.logging_1.1.1.v201101211721.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

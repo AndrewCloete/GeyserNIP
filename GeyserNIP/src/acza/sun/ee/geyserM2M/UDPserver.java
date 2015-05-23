@@ -19,6 +19,9 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
+import acza.sun.ee.geyserM2M.M2MHTTPClient;
+import acza.sun.ee.geyserM2M.M2MxmlFactory;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
@@ -29,12 +32,22 @@ public class UDPserver
 	public static void main( String args[] )
 	{
 		// Check the arguments
-		if( args.length != 1 )
+		if( args.length != 3 )
 		{
-			System.out.println( "usage: DatagramServer port" ) ;
+			System.out.println( "Usage: <UDPServer port>  <NSCL IP address>  <NIP ID>" ) ;
 			return ;
 		}
 
+		
+		final String NSCL_IP_ADD =   args[1];//"52.10.236.177";//"localhost";//
+		final String NIP_ID = args[2]; //(1)
+		final String APP_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications";
+		final String CONTAINER_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers";
+		final String CONTAINER_ID = "DATA";
+		final String CONTENT_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + CONTAINER_ID + "/contentInstances";
+		
+		M2MHTTPClient.post(APP_URI, M2MxmlFactory.registerApplication(NIP_ID));	//(1)
+		
 		try
 		{
 			// Convert the argument to ensure that is it valid
@@ -126,5 +139,19 @@ public class UDPserver
 /*
  * ---------------------------------------------------------------------------------------------------------
  * NOTES:
+ * 
+ * 
+ * (1) NB!
+ * When you export the project as a runnable jar, Eclipse tries to be clever and throws away certain "unnecessary" 
+ * files to keep the size down. In particular, it throws away jaxb.index which ought to be in 
+ * org.eclipse.om2m.commons.resources (JAXB uses this file to determine which classes can be marshaled to XML).
+ * I don't know how to tell eclipse not to do this, but one solution is to simply add the file after the jar has 
+ * been created. You can use Archive Manager to do this easily.
+ * 
+ * It might be worth investigating using the command line instead to get the export right. But a more permanent 
+ * solution would be to use Maven!! Since you are staring to use external libraries, it is seriously time to 
+ * bite the bullet and get Maven up and running.
+ * 
+ * 
  * ---------------------------------------------------------------------------------------------------------
  */
