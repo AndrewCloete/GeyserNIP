@@ -95,7 +95,7 @@ public class UDPserver
 						Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
 						String data_container_id = geyser_id + "_data";
 						String control_container_id = geyser_id +"_control_settings";
-						String data_content_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
+						String data_container_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
 						String control_container_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + control_container_id + "/contentInstances";
 						
 						
@@ -111,13 +111,13 @@ public class UDPserver
 						}
 						
 						//Post data point to NSCL
-						SCLhttpClient.post(data_content_uri, receive_msg);
+						SCLhttpClient.post(data_container_uri, receive_msg);
 						
 						
 						//get element state from NSCL container
 						//if none available, return "{\"status\":\"ACK\",\"e\":unknown}";
 						String new_element_state = (String)getValueFromJSON("e", SCLhttpClient.get(control_container_uri).trim());	
-						reply = "{\"status\":\"ACK\",\"e\":"  + new_element_state + "}";
+						reply = "{\"status\":\"ACK\",\"e\":\""  + new_element_state + "\"}";
 						System.out.println("To geyser: " + reply);
 					}
 					catch(ClassCastException e){
