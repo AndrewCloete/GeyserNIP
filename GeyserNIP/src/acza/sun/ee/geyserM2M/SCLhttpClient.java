@@ -19,12 +19,12 @@ import java.util.regex.Pattern;
 import org.apache.commons.codec.binary.Base64;
 
 public class SCLhttpClient {
-	
 
-public static String get(String getURI){
-		
+
+	public static String get(String getURI){
+
 		String decoded_reply = null;
-	
+
 		try{
 			URL url = new URL("http://" + getURI);
 
@@ -39,28 +39,31 @@ public static String get(String getURI){
 			InputStreamReader in = new InputStreamReader(url.openStream()); //(1)
 			BufferedReader bin = new BufferedReader(in);
 			 */
-			
+
 			StringBuilder builder = new StringBuilder();
 			String line;
 			while((line = bin.readLine()) != null){
 				builder.append(line);
 			}
-			
+
 			String content64 =  parseSCLreply(builder.toString());
 			decoded_reply = new String(Base64.decodeBase64(content64.getBytes()));
-			
+
 
 		}catch (MalformedURLException e){
-			System.out.println(e);
-		}catch (IOException e2){
-			System.out.println(e2);
+			e.printStackTrace();
+		}catch (IOException e){
+			e.printStackTrace();
 		}
 
 		return decoded_reply;
 	}	
-	
-	
-	public static void post(String postURI, String postData){
+
+
+	public static String post(String postURI, String postData){
+
+		String xml_reply = null;
+
 		try{
 			URL url = new URL("http://" + postURI);
 			HttpURLConnection urlcon = (HttpURLConnection) url.openConnection();
@@ -77,53 +80,39 @@ public static String get(String getURI){
 			InputStreamReader inr = new InputStreamReader(in);
 			BufferedReader bin = new BufferedReader(inr);
 
+
+			StringBuilder builder = new StringBuilder();
 			String line;
 			while((line = bin.readLine()) != null){
-				System.out.println(line); //Debug reply
+				builder.append(line);
 			}
 
+			xml_reply = builder.toString();
+
 		}catch (MalformedURLException e){
-			System.out.println(e);
-		}catch (IOException e2){
-			System.out.println(e2);
+			e.printStackTrace();
+		}catch (IOException e){
+			e.printStackTrace();
 		}
-	
+
+		return xml_reply;
 	}
-	
-	
+
+
 	private static String parseSCLreply(String sclXML)
 	{
 		//(1)
 		Pattern r1 = Pattern.compile("(?<=<om2m:content xmime:contentType=\"application\\/xml\">).*(?=<\\/om2m:content>)", Pattern.DOTALL);
 		Matcher m1 = r1.matcher(sclXML);
-		
+
 		if (m1.find( )) {
 			return m1.group(0);
-			
+
 		} else {
 			return "SCL: NO MATCH 1";
 		}
 	}
-	
-	
-	public static String parseInstanceContent(String obix, String name){
-		/*
-		 * Regex geyserID, Temp and element
-		 */
-		
-		//(1)
-		Pattern r1 = Pattern.compile("(?<=<str val=\").{2,15}(?=\" name=\"" + name +"\")", Pattern.DOTALL);
-		Matcher m1 = r1.matcher(obix);
-		
-		if (m1.find( )) {
-			return m1.group(0);
-			
-		} else {
-			return "oBIX: NO MATCH 1";
-		}
-	}
-	
-	
+
 }
 
 /*
