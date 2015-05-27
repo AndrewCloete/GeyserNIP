@@ -139,7 +139,7 @@ public class UDPserver{
 						//Add initialised control_settings container for external controller to post to.
 						xml_reply = SCLhttpClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(control_container_id, (long)2));
 						printDebug(xml_reply, "-v");
-						xml_reply = SCLhttpClient.post(control_container_uri, "{\"e\":\"unknown\"}");
+						xml_reply = SCLhttpClient.post(control_container_uri, "{\"e\":\"UNKNOWN\"}");
 						printDebug(xml_reply, "-v");
 					}
 					else{
