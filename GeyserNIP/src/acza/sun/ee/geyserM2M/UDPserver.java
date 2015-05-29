@@ -19,9 +19,6 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
-import acza.sun.ee.geyserM2M.SCLhttpClient;
-import acza.sun.ee.geyserM2M.M2MxmlFactory;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -74,31 +71,23 @@ public class UDPserver{
 		}
 		//---------------------------------------------------------------------------------------------------------------
 			
-		
-		final String NIP_ID = args[2]; //(1)
-		final String APP_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications";
-		final String CONTAINER_URI = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers";
-		
-		//Register NIP application with NSCL
-		String xml_reply = SCLhttpClient.post(APP_URI, M2MxmlFactory.registerApplication(NIP_ID));	//(1)
-		printDebug(xml_reply, "-v");
-		//TODO: Confirm registration.
-		
+				
 		DatagramSocket socket = null;
 		try{
 			// Construct the socket
 			socket = new DatagramSocket(UDP_PORT) ;
-			System.out.println( "Geyser NIP server started with id: " + NIP_ID) ;
+			System.out.println( "Geyser UDP socket created.") ;
 		}catch (SocketException e){
-			System.err.println("Unable to create socket: " + e ) ;
+			System.err.println("Unable to create UDP socket: " + e ) ;
 			return;
 			//TODO: Log and email
 		}
 
 
+		SCLapi nscl = new SCLapi();
 
-		for( ;; )
-		{
+		for( ;; ){
+			
 			// Create a packet
 			DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
 
@@ -117,30 +106,23 @@ public class UDPserver{
 			//Interpret message from client
 			String reply = null;
 			if(receive_msg.equalsIgnoreCase("at")){
-				reply = "{\"status\":\"NEW\"}";
+				reply = "{\"status\":\"ACK\"}";
 			}
 			else{
 				try{
 
 					Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
-					String data_container_id = geyser_id + "_data";
-					String control_container_id = geyser_id +"_control_settings";
-					String data_container_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + data_container_id + "/contentInstances";
-					String control_container_uri = NSCL_IP_ADD + ":8080/om2m/nscl/applications/" + NIP_ID + "/containers/" + control_container_id + "/contentInstances";
-
-
+					
 					//Case: New geyser ID detected
 					if(!active_ids.contains(geyser_id)){
 						active_ids.push(geyser_id);
-						System.out.println("New geyser join. ID = " + geyser_id);
-						xml_reply = SCLhttpClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(data_container_id, (long)5));
-						printDebug(xml_reply, "-v");
-
-						//Add initialised control_settings container for external controller to post to.
-						xml_reply = SCLhttpClient.post(CONTAINER_URI, M2MxmlFactory.addContainer(control_container_id, (long)2));
-						printDebug(xml_reply, "-v");
-						xml_reply = SCLhttpClient.post(control_container_uri, "{\"e\":\"UNKNOWN\"}");
-						printDebug(xml_reply, "-v");
+						
+					nscl.registerGeyserApplication(geyser_id);	
+					nscl.createContainer(geyser_id, "DATA");
+					nscl.createContainer(geyser_id, "SETTINGS");
+					
+						
+					reply = "{\"status\":\"ACK\"}";	
 					}
 					else{
 						//TODO: Reset client registration TTL
@@ -148,14 +130,11 @@ public class UDPserver{
 					}
 
 					//Post data point to NSCL
-					xml_reply = SCLhttpClient.post(data_container_uri, receive_msg);
-					printDebug(xml_reply, "-v");
+					nscl.createContentInstance(geyser_id, "DATA", receive_msg);
 
 					//get element state from NSCL container
-					//if none available, return "{\"status\":\"ACK\",\"e\":unknown}";
-					String new_element_state = (String)getValueFromJSON("e", SCLhttpClient.get(control_container_uri).trim());	
-					reply = "{\"status\":\"ACK\",\"e\":\""  + new_element_state + "\"}";
-					printDebug("Reply to client " + geyser_id + ": " + reply, "-d");
+					//String new_command = nscl.retrieveLatestContent(geyser_id, "SETTINGS");
+					reply = "{\"status\":\"ACK\"}";	
 				}
 				catch(ClassCastException e){
 					reply = "{\"status\":\"ERR\"}";
@@ -173,7 +152,6 @@ public class UDPserver{
 			}
 
 		}  
-
 	}
 
 
