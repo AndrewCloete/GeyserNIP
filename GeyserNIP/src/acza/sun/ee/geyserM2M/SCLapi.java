@@ -19,6 +19,7 @@ import org.eclipse.om2m.commons.rest.ResponseConfirm;
 import org.eclipse.om2m.commons.resource.Application;
 import org.eclipse.om2m.commons.resource.Container;
 import org.eclipse.om2m.commons.resource.ContentInstance;
+import org.eclipse.om2m.commons.resource.StatusCode;
 import org.eclipse.om2m.commons.resource.Subscription;
 import org.eclipse.om2m.commons.utils.XmlMapper;
 
@@ -71,11 +72,23 @@ public class SCLapi {
 	
 	public void  createContainer(long geyser_ID, String containerID){
 		//Create DATA container
-		//TODO: Set max size
-		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/",REQENTITY,new Container(containerID));
+		request = new RequestIndication("RETRIEVE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID ,REQENTITY);
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println("Create container, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		System.out.println("Poll container, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		
+		if(response.getStatusCode().equals(StatusCode.STATUS_NOT_FOUND)){	//Case: Container does not exist
+			Container new_container = new Container(containerID);
+			new_container.setMaxNrOfInstances((long)5);
+			request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/",REQENTITY, new_container);
+			request.setBase(this.NSCL_BASEURI);
+			response = http_client.sendRequest(request);
+			System.out.println("Create container, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		}
+		else{//Case: Container already exists
+			System.out.println("Container already exists, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		}
+		
 		//TODO: Confirm creation
 		//TODO: Check conflict
 	}

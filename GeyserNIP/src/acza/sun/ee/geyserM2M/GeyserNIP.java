@@ -172,14 +172,18 @@ public class GeyserNIP{
 					}
 					else{
 						
-						//long current_unixTime = System.currentTimeMillis() / 1000L;
 						//PARADOX: You can't to de-registration here.
-						
 						GeyserApplication current_geyser =  active_geysers.get(geyser_id);
-						String command = current_geyser.popCommand();
-						reply = "{\"status\":\"ACK\"}";
+						String command = current_geyser.popCommand().trim();
+							
+						if(command.isEmpty())
+							reply = "{\"status\":\"ACK\"}";
+						else{
+							// TODO: Verify valid JSON
+							reply = "{\"status\":\"ACK\", " + command.substring(1);
+						}
 						
-						//
+						System.out.println("Outbound reply: " + reply);
 					}
 
 					//Post data point to NSCL
@@ -248,9 +252,18 @@ public class GeyserNIP{
 
 		@Override
 		protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-			System.out.println("Post REQUEST successful");
+			System.out.println("Inbound POST apoc request received");
 
-			System.out.println(request.getRequestURI());
+			String requestURI = request.getRequestURI();
+			
+			Long target_geyserclient_id = (long)0000;
+			try{
+				target_geyserclient_id = new Long(requestURI.substring(requestURI.lastIndexOf("_")+1));
+			} catch (Exception e){
+				System.out.println("Apoc URI failure."); 
+				//This should never happen if the apoc was correctly registered
+				//This can imply hacking
+			}
 			
 			InputStream in = request.getInputStream();
 			InputStreamReader inr = new InputStreamReader(in);
@@ -262,18 +275,20 @@ public class GeyserNIP{
 				builder.append(line);
 			}
 			
-			System.out.println(builder.toString());
-			
 			XmlMapper xm = XmlMapper.getInstance();
 			Notify notify = (Notify) xm.xmlToObject(builder.toString());
-			System.out.println(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
+			System.out.println("Inbound notification: " + notify.getStatusCode());
 			ContentInstance ci = (ContentInstance) xm.xmlToObject(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
-			System.out.println(ci.getId());
-			System.out.println(new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1));
+			System.out.println("Inbound content instance: " + ci.getId());
+			String jsonCommand = new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1);
+			System.out.println("Inbound command string for Geyser "+ target_geyserclient_id +": " + jsonCommand);
 			
-			/*TODO
-			 * Push new command to correct geyser (identify geyser using URI)
-			 */
+
+			// Push new command to correct geyser (identify geyser using URI)
+			if(active_geysers.containsKey(target_geyserclient_id)){
+				GeyserApplication geyser_to_update =  active_geysers.get(target_geyserclient_id);
+				geyser_to_update.pushCommand(jsonCommand);
+			}
 		}
 		
 	}
