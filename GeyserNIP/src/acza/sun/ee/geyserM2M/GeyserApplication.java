@@ -15,19 +15,17 @@ import java.util.LinkedList;
 
 public class GeyserApplication {
 
-	private final int ID;
-	private int registration_ttl;
+	private final long ID;
+	private long last_clientactivity_time;
 	private LinkedList<String> commandQueue;
 	
-	private static int TTL_RESET = 5;
-	
-	public GeyserApplication(int id){
+	public GeyserApplication(long id){
 		this.ID = id;
-		this.registration_ttl = TTL_RESET;
+		this.last_clientactivity_time = System.currentTimeMillis();
 		this.commandQueue = new LinkedList<String>();
 	}
 	
-	public int getID(){
+	public long getID(){
 		return this.ID;
 	}
 	
@@ -36,10 +34,15 @@ public class GeyserApplication {
 	}
 	
 	public String popCommand(){
+		this.last_clientactivity_time = System.currentTimeMillis();
 		if(this.commandQueue.isEmpty())
 			return "";
 		else
 			return commandQueue.pop();
+	}
+	
+	public long getLastClientActivityTime(){
+		return last_clientactivity_time;
 	}
 	
 }

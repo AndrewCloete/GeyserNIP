@@ -55,9 +55,18 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications",REQENTITY,new Application("geyser_" + geyser_ID));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response);
+		System.out.println("Register application: " + response.getStatusCode());
 		//TODO: Confirm registration
 		//TODO: Check conflict
+	}
+	
+	//Register new geyser application at NSCL
+	public void deregisterGeyserApplication(long geyser_ID){
+		request = new RequestIndication("DELETE","/applications/geyser_" + geyser_ID,REQENTITY);
+		request.setBase(this.NSCL_BASEURI);
+		response = http_client.sendRequest(request);
+		System.out.println("Deregister application, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		//TODO: Confirm deregistration
 	}
 	
 	public void  createContainer(long geyser_ID, String containerID){
@@ -66,7 +75,7 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/",REQENTITY,new Container(containerID));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response);
+		System.out.println("Create container, Geyser: " + geyser_ID + " - " + response.getStatusCode());
 		//TODO: Confirm creation
 		//TODO: Check conflict
 	}
@@ -75,7 +84,7 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances",REQENTITY, new ContentInstance(content.getBytes()));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response);
+		System.out.println("Create content instance, Geyser: " + geyser_ID + " - " + response.getStatusCode());
 		//TODO: Confirm content
 		//TODO: Check conflict
 	}
@@ -84,7 +93,7 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances/subscriptions",REQENTITY,new Subscription(subscriptionID, "http://"+ server_baseURI_apoc +"/"+ subscriptionID +"_" + geyser_ID));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response);
+		System.out.println("Subscribe to content, Geyser: " + geyser_ID + " - " + response.getStatusCode());
 		//TODO: Confirm subscription
 		//TODO: Check conflict
 	}
@@ -94,7 +103,7 @@ public class SCLapi {
 		request = new RequestIndication("RETRIEVE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances/latest",REQENTITY);
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response);
+		System.out.println(response.getStatusCode());
 		//TODO: Confirm content
 		//TODO: Check conflict
 		
@@ -102,6 +111,10 @@ public class SCLapi {
 		XmlMapper xm = XmlMapper.getInstance();
 		ContentInstance ci = (ContentInstance) xm.xmlToObject(response.getRepresentation());
 		return new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1);
+	}
+
+	public String getNSCL_ID() {
+		return NSCL_ID;
 	}
 	
 }

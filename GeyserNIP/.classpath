@@ -9,5 +9,7 @@
 	<classpathentry kind="lib" path="/home/andrew/git/org.eclipse.om2m/org.eclipse.om2m.comm.http/target/classes"/>
 	<classpathentry kind="lib" path="/home/andrew/git/org.eclipse.om2m/org.eclipse.om2m.comm.service/target/classes"/>
 	<classpathentry kind="lib" path="/home/andrew/eclipse/plugins/org.apache.commons.httpclient_3.1.0.v201012070820.jar"/>
+	<classpathentry kind="lib" path="/home/andrew/workspace/JettyEmbeddedHelloWorld/lib/javax.servlet-api-3.1.0.jar"/>
+	<classpathentry kind="lib" path="/home/andrew/workspace/JettyEmbeddedHelloWorld/lib/jetty-all-9.2.8.v20150217.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

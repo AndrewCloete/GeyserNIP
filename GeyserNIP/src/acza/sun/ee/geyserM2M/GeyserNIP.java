@@ -14,28 +14,44 @@
 
 package acza.sun.ee.geyserM2M;
 
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.om2m.commons.resource.ContentInstance;
+import org.eclipse.om2m.commons.resource.Notify;
+import org.eclipse.om2m.commons.utils.XmlMapper;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
-import java.util.LinkedList;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
-public class UDPserver{
+
+public class GeyserNIP{
 	
 	private static String DEBUG_OPTION = "-n"; //Default is no debug.
 	private final static int PACKETSIZE = 1024 ;	
-	private static LinkedList<Long> active_ids = new LinkedList<Long>();
+	private static Map<Long, GeyserApplication> active_geysers = new ConcurrentHashMap<Long, GeyserApplication>();
 
 	public static void main( String args[] )
 	{
+		
 		// ---------------------- Sanity checking of command line arguments -------------------------------------------
 		if( args.length < 3 )
 		{
@@ -70,8 +86,31 @@ public class UDPserver{
 			}
 		}
 		//---------------------------------------------------------------------------------------------------------------
-			
-				
+		
+		/* ***************************** START APOC SERVER ************************************************/
+
+		Server server = new Server(9090);
+
+		ServletHandler handler = new ServletHandler();
+		server.setHandler(handler);
+
+		// IMPORTANT:
+		// This is a raw Servlet, not a Servlet that has been configured
+		// through a web.xml @WebServlet annotation, or anything similar.
+		handler.addServletWithMapping(ApocServlet.class, "/*");
+
+		try {
+			server.start();
+			System.out.println("Apoc server started.");
+		} catch (Exception e1) {
+			System.out.println("Apoc server failed.");
+			e1.printStackTrace();
+			return;
+		}
+		/* ********************************************************************************************/
+		
+		
+		
 		DatagramSocket socket = null;
 		try{
 			// Construct the socket
@@ -85,8 +124,12 @@ public class UDPserver{
 
 
 		SCLapi nscl = new SCLapi();
+		
+		
+		
+		new Thread(new GeyserWatchdog(nscl, active_geysers)).start();
 
-		for( ;; ){
+		for(;;){
 			
 			// Create a packet
 			DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
@@ -114,27 +157,33 @@ public class UDPserver{
 					Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
 					
 					//Case: New geyser ID detected
-					if(!active_ids.contains(geyser_id)){
-						active_ids.push(geyser_id);
-						
+					if(!active_geysers.containsKey(geyser_id)){
+					
+					//Creat new geyser and add to list.
+					GeyserApplication new_geyser = new GeyserApplication(geyser_id);
+					active_geysers.put(geyser_id, new_geyser);
+					
 					nscl.registerGeyserApplication(geyser_id);	
 					nscl.createContainer(geyser_id, "DATA");
 					nscl.createContainer(geyser_id, "SETTINGS");
+					nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:9090");
 					
-						
 					reply = "{\"status\":\"ACK\"}";	
 					}
 					else{
-						//TODO: Reset client registration TTL
-						//TODO: System.out.println("Client registration timed out. ID = " + geyser_id);
+						
+						//long current_unixTime = System.currentTimeMillis() / 1000L;
+						//PARADOX: You can't to de-registration here.
+						
+						GeyserApplication current_geyser =  active_geysers.get(geyser_id);
+						String command = current_geyser.popCommand();
+						reply = "{\"status\":\"ACK\"}";
+						
+						//
 					}
 
 					//Post data point to NSCL
 					nscl.createContentInstance(geyser_id, "DATA", receive_msg);
-
-					//get element state from NSCL container
-					//String new_command = nscl.retrieveLatestContent(geyser_id, "SETTINGS");
-					reply = "{\"status\":\"ACK\"}";	
 				}
 				catch(ClassCastException e){
 					reply = "{\"status\":\"ERR\"}";
@@ -191,6 +240,44 @@ public class UDPserver{
 			System.out.println(msg);
 		}
 	}
+	
+	
+	
+	@SuppressWarnings("serial")
+	public static class ApocServlet extends HttpServlet {
+
+		@Override
+		protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+			System.out.println("Post REQUEST successful");
+
+			System.out.println(request.getRequestURI());
+			
+			InputStream in = request.getInputStream();
+			InputStreamReader inr = new InputStreamReader(in);
+			BufferedReader bin = new BufferedReader(inr);
+
+			StringBuilder builder = new StringBuilder();
+			String line;
+			while((line = bin.readLine()) != null){
+				builder.append(line);
+			}
+			
+			System.out.println(builder.toString());
+			
+			XmlMapper xm = XmlMapper.getInstance();
+			Notify notify = (Notify) xm.xmlToObject(builder.toString());
+			System.out.println(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
+			ContentInstance ci = (ContentInstance) xm.xmlToObject(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
+			System.out.println(ci.getId());
+			System.out.println(new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1));
+			
+			/*TODO
+			 * Push new command to correct geyser (identify geyser using URI)
+			 */
+		}
+		
+	}
+
 }
 
 
