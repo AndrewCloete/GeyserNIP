@@ -45,7 +45,6 @@ import javax.servlet.http.HttpServletResponse;
 
 public class GeyserNIP{
 	
-	private static String DEBUG_OPTION = "-n"; //Default is no debug.
 	private final static int PACKETSIZE = 1024 ;	
 	private static Map<Long, GeyserApplication> active_geysers = new ConcurrentHashMap<Long, GeyserApplication>();
 
@@ -53,9 +52,9 @@ public class GeyserNIP{
 	{
 		
 		// ---------------------- Sanity checking of command line arguments -------------------------------------------
-		if( args.length < 3 )
+		if( args.length != 4)
 		{
-			System.out.println( "Usage: <NSCL IP address>  <UDPServer port>  <NIP ID>  <Optional MODE: -d Debug, -v Verbose>" ) ;
+			System.out.println( "Usage: <NSCL IP address>  <UDPServer port>  <aPoc server port>  <registration timout>" ) ;
 			return;
 		}
 		
@@ -73,23 +72,30 @@ public class GeyserNIP{
 			return;
 		}
 		
-		//(3)
-		if( args.length == 4 )
-		{
-			if(args[3].equalsIgnoreCase("-d"))
-				DEBUG_OPTION = "-d";
-			else if (args[3].equalsIgnoreCase("-v"))
-				DEBUG_OPTION = "-v";
-			else{
-				System.out.println( "Invalid option: " + args[3]) ;
+		final int APOC_PORT;
+		try{
+			APOC_PORT = Integer.parseInt( args[2] ); // Convert the argument to ensure that is it valid
+		}catch ( Exception e ){
+			System.out.println( "aPoc port invalid." ) ;
+			return;
+		}
+		
+		final int REGISTRATION_TIMEOUT;
+		try{
+			REGISTRATION_TIMEOUT = Integer.parseInt( args[3] ); // Convert the argument to ensure that is it valid
+			if(REGISTRATION_TIMEOUT < 5 || REGISTRATION_TIMEOUT > 60){
+				System.out.println( "Please enter registration timeout between 5 and 60 minutes.") ;
 				return;
 			}
+		}catch ( Exception e ){
+			System.out.println("Registration time invalid") ;
+			return;
 		}
 		//---------------------------------------------------------------------------------------------------------------
 		
 		/* ***************************** START APOC SERVER ************************************************/
 
-		Server server = new Server(9090);
+		Server server = new Server(APOC_PORT);
 
 		ServletHandler handler = new ServletHandler();
 		server.setHandler(handler);
@@ -127,7 +133,7 @@ public class GeyserNIP{
 		
 		
 		
-		new Thread(new GeyserWatchdog(nscl, active_geysers)).start();
+		new Thread(new GeyserWatchdog(nscl, active_geysers, REGISTRATION_TIMEOUT)).start();
 
 		for(;;){
 			
@@ -143,7 +149,7 @@ public class GeyserNIP{
 
 			// Print the packet
 			String receive_msg = new String(packet.getData()).trim();
-			printDebug("Recieved: " + receive_msg + " from: " +  packet.getAddress() + " " + packet.getPort(), "-d") ;
+			System.out.println("Recieved: " + receive_msg + " from: " +  packet.getAddress() + " " + packet.getPort()) ;
 
 			
 			//Interpret message from client
@@ -166,7 +172,7 @@ public class GeyserNIP{
 					nscl.registerGeyserApplication(geyser_id);	
 					nscl.createContainer(geyser_id, "DATA");
 					nscl.createContainer(geyser_id, "SETTINGS");
-					nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:9090");
+					nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:"+ APOC_PORT);
 					
 					reply = "{\"status\":\"ACK\"}";	
 					}
@@ -220,7 +226,7 @@ public class GeyserNIP{
 			return jobj.get(key);
 
 		}catch(ParseException pe){
-			printDebug("JSON parse exeption at position: " + pe.getPosition() + " : " + pe, "-d");
+			System.out.println("JSON parse exeption at position: " + pe.getPosition() + " : " + pe);
 			return "Error";
 		}
 	}
@@ -234,17 +240,6 @@ public class GeyserNIP{
 		 Matcher matcher = adr_pattern.matcher(ip_adr);
 		 return matcher.matches();
 	}
-	
-	//(3)
-	private static void printDebug(final String msg, final String option){
-		if(DEBUG_OPTION.equalsIgnoreCase("-d") && option.equalsIgnoreCase("-d")){
-			System.out.println(msg);
-		}
-		else if (DEBUG_OPTION.equalsIgnoreCase("-v")){
-			System.out.println(msg);
-		}
-	}
-	
 	
 	
 	@SuppressWarnings("serial")
@@ -325,10 +320,6 @@ public class GeyserNIP{
  * exception json corrupt 
  * reply {"status":"ERR"}
  * 
- * 
- * (3)
- * Use debug while building/debugging the server.
- * Use System.out when permanent message should be printed. (Will be mailed to system admin)
  * 
  * 
  * 

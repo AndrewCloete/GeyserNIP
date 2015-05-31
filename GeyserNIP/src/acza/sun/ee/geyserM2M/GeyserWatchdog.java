@@ -20,11 +20,18 @@ public class GeyserWatchdog implements Runnable {
 	
 	private Map<Long, GeyserApplication> active_geysers;
 	private SCLapi registered_scl;
-	private long TIMEOUT = 60000; //Whatchdog time is 10 minutes 1000millis * 60sec * 1min
+	private long TIMEOUT; //Whatchdog time is 10 minutes 1000millis * 60sec * 10min
 	
 	public GeyserWatchdog(SCLapi registered_scl, Map<Long, GeyserApplication> active_geysers){
 		this.active_geysers = active_geysers;
 		this.registered_scl = registered_scl;
+		TIMEOUT = 600000; //Default timeout 10 minutes
+	}
+	
+	public GeyserWatchdog(SCLapi registered_scl, Map<Long, GeyserApplication> active_geysers,  int timeout){
+		this.active_geysers = active_geysers;
+		this.registered_scl = registered_scl;
+		TIMEOUT = 1000*60*timeout;
 	}
 	
 	@Override

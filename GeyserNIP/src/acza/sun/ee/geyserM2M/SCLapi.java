@@ -102,6 +102,15 @@ public class SCLapi {
 		//TODO: Check conflict
 	}
 	
+	public void updateContentInstance(long geyser_ID, String containerID, String content){
+		request = new RequestIndication("UPDATE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances",REQENTITY, new ContentInstance(content.getBytes()));
+		request.setBase(this.NSCL_BASEURI);
+		response = http_client.sendRequest(request);
+		System.out.println("Update content instance, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		//TODO: Confirm content
+		//TODO: Check conflict
+	}
+	
 	public void subscribeToContent(long geyser_ID, String containerID, String subscriptionID, String server_baseURI_apoc){
 		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances/subscriptions",REQENTITY,new Subscription(subscriptionID, "http://"+ server_baseURI_apoc +"/"+ subscriptionID +"_" + geyser_ID));
 		request.setBase(this.NSCL_BASEURI);
@@ -112,7 +121,6 @@ public class SCLapi {
 	}
 	
 	public String retrieveLatestContent(long geyser_ID, String containerID){
-		//Create DATA container
 		request = new RequestIndication("RETRIEVE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances/latest",REQENTITY);
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
