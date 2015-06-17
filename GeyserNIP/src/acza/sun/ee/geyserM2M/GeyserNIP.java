@@ -160,7 +160,7 @@ public class GeyserNIP{
 			else{
 				try{
 
-					Long geyser_id = (Long)getValueFromJSON("id", receive_msg);
+					Long geyser_id = (Long)getValueFromJSON("ID", receive_msg);
 					
 					//Case: New geyser ID detected
 					if(!active_geysers.containsKey(geyser_id)){

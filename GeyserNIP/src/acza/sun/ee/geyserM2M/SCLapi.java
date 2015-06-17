@@ -12,13 +12,18 @@
 package acza.sun.ee.geyserM2M;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.eclipse.om2m.comm.http.RestHttpClient;
 import org.eclipse.om2m.commons.rest.RequestIndication;
 import org.eclipse.om2m.commons.rest.ResponseConfirm;
 import org.eclipse.om2m.commons.resource.Application;
+import org.eclipse.om2m.commons.resource.Applications;
 import org.eclipse.om2m.commons.resource.Container;
 import org.eclipse.om2m.commons.resource.ContentInstance;
+import org.eclipse.om2m.commons.resource.NamedReferenceCollection;
+import org.eclipse.om2m.commons.resource.ReferenceToNamedResource;
 import org.eclipse.om2m.commons.resource.StatusCode;
 import org.eclipse.om2m.commons.resource.Subscription;
 import org.eclipse.om2m.commons.utils.XmlMapper;
@@ -34,7 +39,7 @@ public class SCLapi {
 	private String NSCL_BASEURI;
 	private String REQENTITY;
 
-	//Default contructor
+	//Default constructor
 	public SCLapi(){
 		this.http_client = new RestHttpClient();
 		this.NSCL_ID = "nscl";
@@ -120,11 +125,40 @@ public class SCLapi {
 		//TODO: Check conflict
 	}
 	
+	public void subscribeToApplications(String subscriptionID, String server_baseURI_apoc){
+		request = new RequestIndication("CREATE","/applications/subscriptions",REQENTITY,new Subscription(subscriptionID, "http://"+ server_baseURI_apoc +"/"+ subscriptionID + "/application"));
+		request.setBase(this.NSCL_BASEURI);
+		response = http_client.sendRequest(request);
+		System.out.println("Subscribe to applications - " + response.getStatusCode());
+		//TODO: Confirm subscription
+		//TODO: Check conflict
+	}
+	
+	public List<String> retrieveApplicationList(){
+		request = new RequestIndication("RETRIEVE","/applications",REQENTITY);
+		request.setBase(this.NSCL_BASEURI);
+		response = http_client.sendRequest(request);
+		System.out.println(response.getStatusCode());
+		
+		XmlMapper xm = XmlMapper.getInstance();
+		Applications apps = (Applications)xm.xmlToObject(response.getRepresentation());
+		NamedReferenceCollection nrc = apps.getApplicationCollection();
+		List<ReferenceToNamedResource> list = nrc.getNamedReference();
+		
+		List<String> appArray = new LinkedList<String>();
+		
+		for (ReferenceToNamedResource rtnr : list){
+			appArray.add(rtnr.getId());
+		}
+		
+		return appArray;
+	}
+	
 	public String retrieveLatestContent(long geyser_ID, String containerID){
 		request = new RequestIndication("RETRIEVE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances/latest",REQENTITY);
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		System.out.println(response.getStatusCode());
+		System.out.println("Retrieve latest content: " + response.getStatusCode());
 		//TODO: Confirm content
 		//TODO: Check conflict
 		
