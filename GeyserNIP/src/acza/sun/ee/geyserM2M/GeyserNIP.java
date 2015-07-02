@@ -42,11 +42,16 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 
 public class GeyserNIP{
 	
+	private static final Logger logger = LogManager.getLogger(GeyserNIP.class);
 	private final static int PACKETSIZE = 1024 ;	
 	private static Map<Long, GeyserApplication> active_geysers = new ConcurrentHashMap<Long, GeyserApplication>();
+	
 
 	public static void main( String args[] )
 	{
@@ -93,6 +98,8 @@ public class GeyserNIP{
 		}
 		//---------------------------------------------------------------------------------------------------------------
 		
+		logger.info("GeyserNIP started...");
+		
 		/* ***************************** START APOC SERVER ************************************************/
 
 		Server server = new Server(APOC_PORT);
@@ -107,10 +114,9 @@ public class GeyserNIP{
 
 		try {
 			server.start();
-			System.out.println("Apoc server started.");
-		} catch (Exception e1) {
-			System.out.println("Apoc server failed.");
-			e1.printStackTrace();
+			logger.info("Apoc server started.");
+		} catch (Exception e) {
+			logger.fatal("Apoc server failed.", e);
 			return;
 		}
 		/* ********************************************************************************************/
@@ -121,97 +127,108 @@ public class GeyserNIP{
 		try{
 			// Construct the socket
 			socket = new DatagramSocket(UDP_PORT) ;
-			System.out.println( "Geyser UDP socket created.") ;
+			logger.info( "Geyser UDP socket created.") ;
 		}catch (SocketException e){
-			System.err.println("Unable to create UDP socket: " + e ) ;
+			logger.fatal("Unable to create UDP socket: " + e);
 			return;
-			//TODO: Log and email
 		}
 
 
 		SCLapi nscl = new SCLapi();
 		
 		
-		
 		new Thread(new GeyserWatchdog(nscl, active_geysers, REGISTRATION_TIMEOUT)).start();
 
 		for(;;){
 			
-			// Create a packet
-			DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
+			try{//Main loop exception catcher/logger
+				
+				// Create a packet
+				DatagramPacket packet = new DatagramPacket( new byte[PACKETSIZE], PACKETSIZE ) ;
 
-			// Receive a packet (blocking)
-			try{
-				socket.receive( packet ) ;
-			}catch (IOException e){
-				System.err.println("Packet recieve error: " + e ) ;
-			}
-
-			// Print the packet
-			String receive_msg = new String(packet.getData()).trim();
-			System.out.println("Recieved: " + receive_msg + " from: " +  packet.getAddress() + " " + packet.getPort()) ;
-
-			
-			//Interpret message from client
-			String reply = null;
-			if(receive_msg.equalsIgnoreCase("at")){
-				reply = "{\"status\":\"ACK\"}";
-			}
-			else{
+				// Receive a packet (blocking)
 				try{
+					socket.receive( packet ) ;
+				}catch (IOException e){
+					logger.error("Packet recieve error: " + e) ;
+				}
 
-					Long geyser_id = (Long)getValueFromJSON("ID", receive_msg);
-					
-					//Case: New geyser ID detected
-					if(!active_geysers.containsKey(geyser_id)){
-					
-					//Creat new geyser and add to list.
-					GeyserApplication new_geyser = new GeyserApplication(geyser_id);
-					active_geysers.put(geyser_id, new_geyser);
-					
-					nscl.registerGeyserApplication(geyser_id);	
-					nscl.createContainer(geyser_id, "DATA");
-					nscl.createContainer(geyser_id, "SETTINGS");
-					nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:"+ APOC_PORT);
-					
-					reply = "{\"status\":\"ACK\"}";	
-					}
-					else{
-						
-						//PARADOX: You can't to de-registration here.
-						GeyserApplication current_geyser =  active_geysers.get(geyser_id);
-						String command = current_geyser.popCommand().trim();
+				// Print the packet
+				String receive_msg = new String(packet.getData()).trim();
+				System.out.println("Recieved: " + receive_msg + " from: " +  packet.getAddress() + " " + packet.getPort()) ;
+
+
+				//Interpret message from client
+				String reply = null;
+				if(receive_msg.equalsIgnoreCase("at")){
+					reply = "{\"status\":\"ACK\"}";
+				}
+				else{
+					try{
+
+						Long geyser_id = (Long)getValueFromJSON("ID", receive_msg);
+
+						//Case: New geyser ID detected
+						if(!active_geysers.containsKey(geyser_id)){
+
+							//Creat new geyser and add to list.
+							GeyserApplication new_geyser = new GeyserApplication(geyser_id);
+							active_geysers.put(geyser_id, new_geyser);
+							logger.info("New geyser " + geyser_id + " added to map");
 							
-						if(command.isEmpty())
-							reply = "{\"status\":\"ACK\"}";
-						else{
-							// TODO: Verify valid JSON
-							reply = "{\"status\":\"ACK\", " + command.substring(1);
+							nscl.registerGeyserApplication(geyser_id);	
+							nscl.createContainer(geyser_id, "DATA");
+							nscl.createContainer(geyser_id, "SETTINGS");
+							nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:"+ APOC_PORT);
+
+							reply = "{\"status\":\"ACK\"}";	
 						}
-						
-						System.out.println("Outbound reply: " + reply);
+						else{
+
+							//PARADOX: You can't to de-registration here.
+							GeyserApplication current_geyser =  active_geysers.get(geyser_id);
+							String command = current_geyser.popCommand().trim();
+
+							if(command.isEmpty())
+								reply = "{\"status\":\"ACK\"}";
+							else{
+								// TODO: Verify valid JSON
+								reply = "{\"status\":\"ACK\", " + command.substring(1);
+							}
+
+							System.out.println("Outbound reply: " + reply);
+						}
+
+						//Post data point to NSCL
+						nscl.createContentInstance(geyser_id, "DATA", receive_msg);
 					}
-
-					//Post data point to NSCL
-					nscl.createContentInstance(geyser_id, "DATA", receive_msg);
+					catch(ClassCastException e){//Message was not "at" and is corrupt
+						logger.warn("Corrupt JSON data from geyser: " + receive_msg);
+						reply = "{\"status\":\"ERR\"}";
+					}
 				}
-				catch(ClassCastException e){
-					reply = "{\"status\":\"ERR\"}";
+
+				// Return a reply packet to the sender
+				try {
+					DatagramPacket ack = new DatagramPacket(reply.getBytes(), reply.getBytes().length, packet.getSocketAddress());
+					socket.send( ack ) ;
+				} catch (SocketException e) {
+					logger.error("Error creating reply packet to client: " + e);
+				} catch (IOException e) {
+					logger.error("Error sending reply packet to client: " + e);
+				}
+
+			}
+			catch(Exception e){
+				logger.fatal("Unknown exception in main program loop." + e);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
 				}
 			}
 
-			// Return a reply packet to the sender
-			try {
-				DatagramPacket ack = new DatagramPacket(reply.getBytes(), reply.getBytes().length, packet.getSocketAddress());
-				socket.send( ack ) ;
-			} catch (SocketException e) {
-				System.err.println("Error creating reply packet to client: " + e);
-			} catch (IOException e) {
-				System.err.println("Error sending reply packet to client: " + e);
-			}
-
-		}  
-	}
+		}	// End of main program loop
+	}	//End of main program.
 
 
 	private static Object getValueFromJSON(String key, String JSON){
@@ -226,7 +243,7 @@ public class GeyserNIP{
 			return jobj.get(key);
 
 		}catch(ParseException pe){
-			System.out.println("JSON parse exeption at position: " + pe.getPosition() + " : " + pe);
+			logger.warn("JSON parse exeption at position: " + pe.getPosition(), pe);
 			return "Error";
 		}
 	}
@@ -247,15 +264,15 @@ public class GeyserNIP{
 
 		@Override
 		protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-			System.out.println("Inbound POST apoc request received");
 
 			String requestURI = request.getRequestURI();
 			
 			Long target_geyserclient_id = (long)0000;
 			try{
 				target_geyserclient_id = new Long(requestURI.substring(requestURI.lastIndexOf("_")+1));
+				logger.info("aPoC request received for geyser: " + target_geyserclient_id);
 			} catch (Exception e){
-				System.out.println("Apoc URI failure."); 
+				logger.error("Apoc URI failure."); 
 				//This should never happen if the apoc was correctly registered
 				//This can imply hacking
 			}

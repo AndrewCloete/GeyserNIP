@@ -15,9 +15,12 @@ package acza.sun.ee.geyserM2M;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class GeyserWatchdog implements Runnable {
 
-	
+	private static final Logger logger = LogManager.getLogger(GeyserWatchdog.class);
 	private Map<Long, GeyserApplication> active_geysers;
 	private SCLapi registered_scl;
 	private long TIMEOUT; //Whatchdog time is 10 minutes 1000millis * 60sec * 10min
@@ -55,7 +58,7 @@ public class GeyserWatchdog implements Runnable {
 			    if((unixTime - last_client_act) > this.TIMEOUT){
 			    	registered_scl.deregisterGeyserApplication(geyser_id);
 			    	active_geysers.remove(geyser_id);
-			    	System.out.println("Removed geyser: " + geyser_id + " Email admin!");
+			    	logger.warn("Removed geyser from map: " + geyser_id);
 			    }
 			    /*TODO: If geyser.lastActiveTime() - unixTime < TIMEOUT
 			     *			Deregister from SCL
@@ -67,12 +70,9 @@ public class GeyserWatchdog implements Runnable {
 			//Periodically sleep
 			try {
 				Thread.sleep(this.TIMEOUT);
-			} catch (InterruptedException e) {
-
-			}
+			} catch (InterruptedException e) {}
 			
-
-		}
+		}//End of main program loop
 		
 		
 		
