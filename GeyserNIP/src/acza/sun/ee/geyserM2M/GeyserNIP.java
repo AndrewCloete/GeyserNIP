@@ -98,7 +98,7 @@ public class GeyserNIP{
 		}
 		//---------------------------------------------------------------------------------------------------------------
 		
-		logger.info("GeyserNIP started...");
+		logger.info("GeyserNIP started with parameters: " + args[0] + " " + args[1] + " " + args[2] + " " + args[3]);
 		
 		/* ***************************** START APOC SERVER ************************************************/
 

@@ -2,9 +2,9 @@
 <Configuration status="ERROR">
 
   <Appenders>
-    <File name="file" fileName="/home/andrew/GeyserNIP.log">
+    <File name="file" fileName="/home/andrew/GeyserLogs/GeyserNIP.log">
       <PatternLayout>
-        <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p %c{1}:%L - %m%n</Pattern>
+        <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}, %-5p, %c{1}:%L, - %m%n</Pattern>
       </PatternLayout>
     </File>
     <Console name="STDOUT" target="SYSTEM_OUT">
