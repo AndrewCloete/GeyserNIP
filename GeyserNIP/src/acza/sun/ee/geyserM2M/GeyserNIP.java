@@ -165,8 +165,10 @@ public class GeyserNIP{
 				}
 				else{
 					try{
+						
 
 						Long geyser_id = (Long)getValueFromJSON("ID", receive_msg);
+
 
 						//Case: New geyser ID detected
 						if(!active_geysers.containsKey(geyser_id)){
@@ -202,6 +204,10 @@ public class GeyserNIP{
 						//Post data point to NSCL
 						nscl.createContentInstance(geyser_id, "DATA", receive_msg);
 					}
+					catch(ParseException e){
+						logger.warn("Corrupt JSON data from geyser: " + receive_msg);
+						reply = "{\"status\":\"ERR\"}";
+					}
 					catch(ClassCastException e){//Message was not "at" and is corrupt
 						logger.warn("Corrupt JSON data from geyser: " + receive_msg);
 						reply = "{\"status\":\"ERR\"}";
@@ -229,34 +235,6 @@ public class GeyserNIP{
 
 		}	// End of main program loop
 	}	//End of main program.
-
-
-	private static Object getValueFromJSON(String key, String JSON){
-
-		JSONParser parser=new JSONParser();
-		try{
-			Object obj = parser.parse(JSON);
-			JSONArray array = new JSONArray();
-			array.add(obj);	
-			JSONObject jobj = (JSONObject)array.get(0);
-
-			return jobj.get(key);
-
-		}catch(ParseException pe){
-			logger.warn("JSON parse exeption at position: " + pe.getPosition(), pe);
-			return "Error";
-		}
-	}
-	
-	private static boolean ipAddressValidator(final String ip_adr){
-		
-		if(ip_adr.equalsIgnoreCase("localhost"))
-			return true;
-		
-		 Pattern adr_pattern = Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$", Pattern.DOTALL);
-		 Matcher matcher = adr_pattern.matcher(ip_adr);
-		 return matcher.matches();
-	}
 	
 	
 	@SuppressWarnings("serial")
@@ -267,42 +245,87 @@ public class GeyserNIP{
 
 			String requestURI = request.getRequestURI();
 			
-			Long target_geyserclient_id = (long)0000;
-			try{
-				target_geyserclient_id = new Long(requestURI.substring(requestURI.lastIndexOf("_")+1));
-				logger.info("aPoC request received for geyser: " + target_geyserclient_id);
-			} catch (Exception e){
-				logger.error("Apoc URI failure."); 
-				//This should never happen if the apoc was correctly registered
-				//This can imply hacking
-			}
-			
-			InputStream in = request.getInputStream();
-			InputStreamReader inr = new InputStreamReader(in);
-			BufferedReader bin = new BufferedReader(inr);
+			String target_resource = requestURI.substring(requestURI.lastIndexOf("/")+1);
+			if(target_resource.startsWith("settings")){
+				Long target_geyserclient_id = (long)0000;
+				try{
+					target_geyserclient_id = new Long(target_resource.substring(target_resource.lastIndexOf("_")+1));
+					logger.info("aPoC request received for geyser: " + target_geyserclient_id);
+				} catch (Exception e){
+					logger.error("Apoc URI failure: " + target_resource); 
+					return;
+					//This should never happen if the apoc was correctly registered
+					//This can imply hacking
+				}
 
-			StringBuilder builder = new StringBuilder();
-			String line;
-			while((line = bin.readLine()) != null){
-				builder.append(line);
-			}
-			
-			XmlMapper xm = XmlMapper.getInstance();
-			Notify notify = (Notify) xm.xmlToObject(builder.toString());
-			System.out.println("Inbound notification: " + notify.getStatusCode());
-			ContentInstance ci = (ContentInstance) xm.xmlToObject(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
-			System.out.println("Inbound content instance: " + ci.getId());
-			String jsonCommand = new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1);
-			System.out.println("Inbound command string for Geyser "+ target_geyserclient_id +": " + jsonCommand);
-			
+				InputStream in = request.getInputStream();
+				InputStreamReader inr = new InputStreamReader(in);
+				BufferedReader bin = new BufferedReader(inr);
 
-			// Push new command to correct geyser (identify geyser using URI)
-			if(active_geysers.containsKey(target_geyserclient_id)){
-				GeyserApplication geyser_to_update =  active_geysers.get(target_geyserclient_id);
-				geyser_to_update.pushCommand(jsonCommand);
+				StringBuilder builder = new StringBuilder();
+				String line;
+				while((line = bin.readLine()) != null){
+					builder.append(line);
+				}
+
+				XmlMapper xm = XmlMapper.getInstance();
+				Notify notify = (Notify) xm.xmlToObject(builder.toString());
+				System.out.println("Inbound notification: " + notify.getStatusCode());
+				ContentInstance ci = (ContentInstance) xm.xmlToObject(new String(notify.getRepresentation().getValue(), StandardCharsets.ISO_8859_1));
+				System.out.println("Inbound content instance: " + ci.getId());
+				String jsonCommand = new String(ci.getContent().getValue(), StandardCharsets.ISO_8859_1);
+				System.out.println("Inbound command string for Geyser "+ target_geyserclient_id +": " + jsonCommand);
+
+
+				// Push new command to correct geyser (identify geyser using URI)
+				if(active_geysers.containsKey(target_geyserclient_id)){
+					GeyserApplication geyser_to_update =  active_geysers.get(target_geyserclient_id);
+					try{
+						verifyJSON(jsonCommand); //Throws parse exception if invalid;
+						geyser_to_update.pushCommand(jsonCommand);
+					}catch(ParseException e){
+						logger.warn("Invalid inbound JSON settings: "+ jsonCommand);
+					}
+					
+				}
+				else{
+					logger.warn("Inbound command for unregistered Geyser "+ target_geyserclient_id +": " + jsonCommand);
+				}
+			}
+			else{
+				logger.warn("Unknown target resource apoc recieved: " + target_resource);
 			}
 		}
+
+	}
+	
+	private static Object getValueFromJSON(String key, String JSON) throws ParseException{
+
+		JSONParser parser=new JSONParser();
+
+		Object obj = parser.parse(JSON);
+		JSONArray array = new JSONArray();
+		array.add(obj);	
+		JSONObject jobj = (JSONObject)array.get(0);
+
+		return jobj.get(key);
+	}
+	
+	private static void verifyJSON(String JSON) throws ParseException{
+		JSONParser parser=new JSONParser();
+
+		Object obj = parser.parse(JSON);
+		JSONArray array = new JSONArray();
+	}
+	
+	private static boolean ipAddressValidator(final String ip_adr){
 		
+		if(ip_adr.equalsIgnoreCase("localhost"))
+			return true;
+		
+		 Pattern adr_pattern = Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$", Pattern.DOTALL);
+		 Matcher matcher = adr_pattern.matcher(ip_adr);
+		 return matcher.matches();
 	}
 
 }

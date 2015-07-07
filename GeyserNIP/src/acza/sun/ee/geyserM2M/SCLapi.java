@@ -145,7 +145,16 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications/"+ app_ID +"/containers/"+ containerID +"/contentInstances",REQENTITY, new ContentInstance(content.getBytes()));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		logger.info("Create content instance: " + app_ID + " - " + response.getStatusCode());
+		
+		if(!response.getStatusCode().equals(StatusCode.STATUS_CREATED)){
+			String content_log;
+			if(content.length() >= 15)
+				content_log = content.substring(0,14);
+			else
+				content_log = content;
+			
+			logger.warn("Create content instance fail: " + app_ID + "/containers/" + containerID + "- \"" + content_log + "...\""+ " - " + response.getStatusCode());
+		}
 		//TODO: Confirm content
 		//TODO: Check conflict
 	}
@@ -154,7 +163,16 @@ public class SCLapi {
 		request = new RequestIndication("CREATE","/applications/geyser_"+ geyser_ID +"/containers/"+ containerID +"/contentInstances",REQENTITY, new ContentInstance(content.getBytes()));
 		request.setBase(this.NSCL_BASEURI);
 		response = http_client.sendRequest(request);
-		logger.info("Create content instance, Geyser: " + geyser_ID + " - " + response.getStatusCode());
+		
+		if(!response.getStatusCode().equals(StatusCode.STATUS_CREATED)){
+			String content_log;
+			if(content.length() >= 15)
+				content_log = content.substring(0,14);
+			else
+				content_log = content;
+			
+			logger.warn("Create content instance fail, geyser_" + geyser_ID + "/containers/" + containerID + " - \"" + content_log + "...\""+ " - " + response.getStatusCode());
+		}
 		//TODO: Confirm content
 		//TODO: Check conflict
 	}
