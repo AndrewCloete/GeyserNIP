@@ -2,7 +2,7 @@
 <Configuration status="ERROR">
 
   <Appenders>
-    <File name="file" fileName="/home/andrew/GeyserLogs/GeyserNIP.log">
+    <File name="file" fileName="/home/16441842/serverlogs/GeyserNIP.log">
       <PatternLayout>
         <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}, %-5p, %c{1}:%L, - %m%n</Pattern>
       </PatternLayout>

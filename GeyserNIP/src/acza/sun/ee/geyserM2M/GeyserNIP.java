@@ -42,6 +42,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import java.util.Calendar;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -161,7 +163,7 @@ public class GeyserNIP{
 				//Interpret message from client
 				String reply = null;
 				if(receive_msg.equalsIgnoreCase("at")){
-					reply = "{\"status\":\"ACK\"}";
+					reply = "{\"status\":\"ACK\","+ "\"ts\":"+ System.currentTimeMillis()/1000 +"}";
 				}
 				else{
 					try{
@@ -197,6 +199,13 @@ public class GeyserNIP{
 								// TODO: Verify valid JSON
 								reply = "{\"status\":\"ACK\", " + command.substring(1);
 							}
+							
+							//Send timestamp between 23:45 and 00:15
+							Calendar now = Calendar.getInstance();
+							int hour = now.get(Calendar.HOUR_OF_DAY);
+							int minute = now.get(Calendar.MINUTE);
+							if((hour == 23 && minute >= 45) || (hour == 0 && minute <= 15))
+								reply = reply.substring(0, reply.length()-1) + ",\"ts\":"+ System.currentTimeMillis()/1000 +"}";
 
 							System.out.println("Outbound reply: " + reply);
 						}
