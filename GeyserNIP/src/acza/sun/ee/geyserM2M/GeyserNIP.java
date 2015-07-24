@@ -59,15 +59,15 @@ public class GeyserNIP{
 	{
 		
 		// ---------------------- Sanity checking of command line arguments -------------------------------------------
-		if( args.length != 4)
+		if( args.length != 5)
 		{
-			System.out.println( "Usage: <NSCL IP address>  <UDPServer port>  <aPoc server port>  <registration timout>" ) ;
+			System.out.println( "Usage: <NSCL IP address>  <UDPServer port> <aPoC URL> <aPoc server port>  <registration timout>" ) ;
 			return;
 		}
 		
 		final String NSCL_IP_ADD = args[0];//"52.10.236.177";//"localhost";//
 		if(!ipAddressValidator(NSCL_IP_ADD)){
-			System.out.println( "IPv4 address invalid." ) ;
+			System.out.println( "IPv4 address invalid: NSCL" ) ;
 			return;
 		}
 		
@@ -79,17 +79,26 @@ public class GeyserNIP{
 			return;
 		}
 		
+		final String APOC_URL = args[2];
+		if(!ipAddressValidator(APOC_URL)){
+			System.out.println( "IPv4 address invalid: APOC" ) ;
+			return;
+		}
+		
+		
 		final int APOC_PORT;
 		try{
-			APOC_PORT = Integer.parseInt( args[2] ); // Convert the argument to ensure that is it valid
+			APOC_PORT = Integer.parseInt( args[3] ); // Convert the argument to ensure that is it valid
 		}catch ( Exception e ){
 			System.out.println( "aPoc port invalid." ) ;
 			return;
 		}
+		final String APOC = APOC_URL + ":" + APOC_PORT;
+		
 		
 		final int REGISTRATION_TIMEOUT;
 		try{
-			REGISTRATION_TIMEOUT = Integer.parseInt( args[3] ); // Convert the argument to ensure that is it valid
+			REGISTRATION_TIMEOUT = Integer.parseInt( args[4] ); // Convert the argument to ensure that is it valid
 			if(REGISTRATION_TIMEOUT < 5 || REGISTRATION_TIMEOUT > 60){
 				System.out.println( "Please enter registration timeout between 5 and 60 minutes.") ;
 				return;
@@ -100,7 +109,7 @@ public class GeyserNIP{
 		}
 		//---------------------------------------------------------------------------------------------------------------
 		
-		logger.info("GeyserNIP started with parameters: " + args[0] + " " + args[1] + " " + args[2] + " " + args[3]);
+		logger.info("GeyserNIP started with parameters: " + args[0] + " " + args[1] + " " + args[2] + " " + args[3] + " " + args[4]);
 		
 		/* ***************************** START APOC SERVER ************************************************/
 
@@ -183,7 +192,7 @@ public class GeyserNIP{
 							nscl.registerGeyserApplication(geyser_id);	
 							nscl.createContainer(geyser_id, "DATA");
 							nscl.createContainer(geyser_id, "SETTINGS");
-							nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", "localhost:"+ APOC_PORT);
+							nscl.subscribeToContent(geyser_id, "SETTINGS", "settings", APOC);
 
 							reply = "{\"status\":\"ACK\"}";	
 						}
@@ -214,11 +223,11 @@ public class GeyserNIP{
 						nscl.createContentInstance(geyser_id, "DATA", receive_msg);
 					}
 					catch(ParseException e){
-						logger.warn("Corrupt JSON data from geyser: " + receive_msg);
+						logger.warn("Corrupt JSON data: " + receive_msg);
 						reply = "{\"status\":\"ERR\"}";
 					}
 					catch(ClassCastException e){//Message was not "at" and is corrupt
-						logger.warn("Corrupt JSON data from geyser: " + receive_msg);
+						logger.warn("Corrupt JSON data: " + receive_msg);
 						reply = "{\"status\":\"ERR\"}";
 					}
 				}
@@ -259,7 +268,7 @@ public class GeyserNIP{
 				Long target_geyserclient_id = (long)0000;
 				try{
 					target_geyserclient_id = new Long(target_resource.substring(target_resource.lastIndexOf("_")+1));
-					logger.info("aPoC request received for geyser: " + target_geyserclient_id);
+					//logger.info("aPoC request received for geyser: " + target_geyserclient_id);
 				} catch (Exception e){
 					logger.error("Apoc URI failure: " + target_resource); 
 					return;
