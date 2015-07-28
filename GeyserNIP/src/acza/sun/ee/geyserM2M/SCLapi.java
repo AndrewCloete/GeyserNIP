@@ -51,12 +51,19 @@ public class SCLapi {
 		this.REQENTITY = "admin:admin";
 	}
 	
-	//Specific constructor
-	public SCLapi(String nscl_id, String nscl_IP, String nscl_port, String reqentity){
+	//Specific constructor.
+	public SCLapi(String nscl_base_uri, String reqentity){
 		this.http_client = new RestHttpClient();
-		this.NSCL_ID = nscl_id;
-		this.NSCL_BASEURI = nscl_IP + ":" + nscl_port + "/om2m/" + NSCL_ID;
+		this.NSCL_BASEURI = nscl_base_uri;
 		this.REQENTITY = reqentity;
+	}
+	
+	
+	//Specific constructor: For OpenMTC NO-AUTH
+	public SCLapi(String nscl_base_uri){
+		this.http_client = new RestHttpClient();
+		this.NSCL_BASEURI = nscl_base_uri;
+		this.REQENTITY = "";
 	}
 	
 	//Register new general application at NSCL

@@ -50,6 +50,8 @@ import org.apache.logging.log4j.LogManager;
 
 public class GeyserNIP{
 	
+	private static final String USAGE_STRING = "<NSCL base URL> <Auth> <UDPServer port> <aPoC URL> <aPoc server port>  <registration timout>";
+	
 	private static final Logger logger = LogManager.getLogger(GeyserNIP.class);
 	private final static int PACKETSIZE = 1024 ;	
 	private static Map<Long, GeyserApplication> active_geysers = new ConcurrentHashMap<Long, GeyserApplication>();
@@ -59,27 +61,26 @@ public class GeyserNIP{
 	{
 		
 		// ---------------------- Sanity checking of command line arguments -------------------------------------------
-		if( args.length != 5)
+		if( args.length != 6)
 		{
-			System.out.println( "Usage: <NSCL IP address>  <UDPServer port> <aPoC URL> <aPoc server port>  <registration timout>" ) ;
+			System.out.println( "Usage: " + USAGE_STRING) ;
 			return;
 		}
 		
-		final String NSCL_IP_ADD = args[0];//"52.10.236.177";//"localhost";//
-		if(!ipAddressValidator(NSCL_IP_ADD)){
-			System.out.println( "IPv4 address invalid: NSCL" ) ;
-			return;
-		}
+		final String NSCL_BASE_URL = args[0];//"52.10.236.177";//"localhost";//
+		
+		
+		final String AUTH = args[1];
 		
 		final int UDP_PORT;
 		try{
-			UDP_PORT = Integer.parseInt( args[1] ); // Convert the argument to ensure that is it valid
+			UDP_PORT = Integer.parseInt( args[2] ); // Convert the argument to ensure that is it valid
 		}catch ( Exception e ){
 			System.out.println( "UDP port invalid." ) ;
 			return;
 		}
 		
-		final String APOC_URL = args[2];
+		final String APOC_URL = args[3];
 		if(!ipAddressValidator(APOC_URL)){
 			System.out.println( "IPv4 address invalid: APOC" ) ;
 			return;
@@ -88,7 +89,7 @@ public class GeyserNIP{
 		
 		final int APOC_PORT;
 		try{
-			APOC_PORT = Integer.parseInt( args[3] ); // Convert the argument to ensure that is it valid
+			APOC_PORT = Integer.parseInt( args[4] ); // Convert the argument to ensure that is it valid
 		}catch ( Exception e ){
 			System.out.println( "aPoc port invalid." ) ;
 			return;
@@ -98,7 +99,7 @@ public class GeyserNIP{
 		
 		final int REGISTRATION_TIMEOUT;
 		try{
-			REGISTRATION_TIMEOUT = Integer.parseInt( args[4] ); // Convert the argument to ensure that is it valid
+			REGISTRATION_TIMEOUT = Integer.parseInt( args[5] ); // Convert the argument to ensure that is it valid
 			if(REGISTRATION_TIMEOUT < 5 || REGISTRATION_TIMEOUT > 60){
 				System.out.println( "Please enter registration timeout between 5 and 60 minutes.") ;
 				return;
@@ -109,7 +110,8 @@ public class GeyserNIP{
 		}
 		//---------------------------------------------------------------------------------------------------------------
 		
-		logger.info("GeyserNIP started with parameters: " + args[0] + " " + args[1] + " " + args[2] + " " + args[3] + " " + args[4]);
+		logger.info("GeyserNIP Usage: " + USAGE_STRING);
+		logger.info("GeyserNIP started with parameters: " + args[0] + " " + args[1] + " " + args[2] + " " + args[3] + " " + args[4] + " " + args[5]);
 		
 		/* ***************************** START APOC SERVER ************************************************/
 
@@ -144,9 +146,11 @@ public class GeyserNIP{
 			return;
 		}
 
-
-		SCLapi nscl = new SCLapi();
-		
+		SCLapi nscl;
+		if(AUTH.equalsIgnoreCase("NONE"))
+			nscl = new SCLapi(NSCL_BASE_URL);	//OpenMTC
+		else
+			nscl = new SCLapi(NSCL_BASE_URL, AUTH); //OM2M
 		
 		new Thread(new GeyserWatchdog(nscl, active_geysers, REGISTRATION_TIMEOUT)).start();
 
