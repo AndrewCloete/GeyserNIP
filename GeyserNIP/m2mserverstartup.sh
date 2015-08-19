@@ -39,16 +39,16 @@ nohup ./start.sh > /dev/null 2>&1 &
 nohup /home/16441842/tomcat/apache-tomcat-7.0.61/bin/startup.sh > /dev/null 2>&1 &
 
 # Start Geyser NIP server <NSCL base URI> <Auth>  <UDPServer port> <aPoc URL>  <aPoc server port>  <registration timout>
-nohup java -jar /home/16441842/geysernip/GeyserNIP.jar localhost:8080/om2m/nscl admin:admin 3535 localhost 9090 5 > /dev/null 2>&1 &
+nohup java -jar /home/16441842/geysernip/GeyserNIP.jar localhost:8080/om2m/nscl admin:admin 3535 localhost 9090 30 > /dev/null 2>&1 &
 
 # Start Geyser Database Network Application <NSCL base URI> <aPoc URL> <aPoc PORT>  <database URL> <database USER>
 nohup java -jar /home/16441842/geyserdatabase/GeyserDatabase.jar localhost:8080/om2m/nscl admin:admin localhost 9595 localhost m2mdatabasena > /dev/null 2>&1 &
 
 #Start GeyserSetpointcontroller <NSCL IP address> <aPoc URL> <aPoc PORT> <Deadband>
-nohup java -jar /home/16441842/geysersetpointcontroller/GeyserSetpointcontroller.jar localhost localhost 9696 4 > /dev/null 2>&1 &
+nohup java -jar /home/16441842/geysersetpointcontroller/GeyserSetpointcontroller.jar > /dev/null 2>&1 &
 
 # Install crontab <NSCL IP address>
-0,10,20,30,40,50 * * * * java -jar /home/16441842/geyserscheduler/GeyserScheduler.jar localhost
+0,15,30,45 * * * * java -jar /home/16441842/geyserscheduler/GeyserScheduler.jar
 
 #--------------------------------------------------------------------------------------------------------------------------
 
