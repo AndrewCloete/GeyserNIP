@@ -89,7 +89,7 @@ class ThreadedUDPServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
 
 
 # Start UDP listening
-HOST, PORT = "localhost", 6565 
+HOST, PORT = "localhost", 3535 
 udpserver = ThreadedUDPServer((HOST, PORT), ThreadedUDPRequestHandler) 
 udp_thread = threading.Thread(target=udpserver.serve_forever) 
 log.info("UDP serving at port %s %d" % (HOST, PORT)) 
