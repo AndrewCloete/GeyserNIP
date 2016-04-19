@@ -6,9 +6,6 @@ import threading
 import sys
 import time
 
-import MySQLdb
-from ewhSql import formatDataInsert
-
 LOG_FILENAME = 'mqttNIP.log'
 FORMAT = '%(levelname)s %(asctime)-15s %(message)s'
 logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG, format=FORMAT)
@@ -19,14 +16,11 @@ log.info("MQTT NIP started")
 
 
 #Connect to MQTT broker
+BROKER_IP = "52.31.251.102"
+BROKER_PORT = 1883
 mqttc=mqtt.Client()
-mqttc.connect("52.31.251.102",1883,60)
-log.info("Connected to MQTT broker")
-
-# Connect to database
-db = MySQLdb.connect(host="146.232.128.163", user="intelligeyser", passwd="ewhM2Mnscl", db="GeyserM2M")
-cur = db.cursor()
-log.info(db)
+mqttc.connect(BROKER_IP, BROKER_PORT,60)
+log.info("Connected to MQTT broker at: %s:%d"%(BROKER_IP,BROKER_PORT))
 
 
 
@@ -38,6 +32,11 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
         data = self.request[0].strip()
         socket = self.request[1]
         log.info("New UDP tstamp from %s, %d"%(self.client_address[0], self.client_address[1]))
+        
+        if(data == "AT"):
+            log.info("New geyser")
+            print("new geyser")
+            
         try:
             ts = {}
             tstamp = json.loads(data)
@@ -54,7 +53,7 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
             ts["T3"] = tstamp["T3"]
             ts["T4"] = tstamp["T4"]
             ts["W"] = int(tstamp["KW"])*1000
-            ts["Wh"] = int(tstamp["KWH"])*1000
+            ts["Wh"] = int(tstamp["KWH"])
             ts["Hd"] = int(tstamp["HLtotal"])
             ts["Hm"] = int(tstamp["HLmin"])
             ts["Cd"] = int(tstamp["CLtotal"])
@@ -66,17 +65,13 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
             #Publish the new formatted datapoint to broker
             mqttc.publish("ewh/ts/%d"%tstamp["ID"],json.dumps(ts),2)
 
-            #Save the stamp to the old DB as backup
-            cur.execute(formatDataInsert(tstamp))
-            db.commit()
 
         except ValueError:
             log.error("Invalid JSON: Value error")
         except KeyError:
             log.error("Invalid JSON: Key error")
-        except MySQLdb.Error, e:
-            log.error("MySQL Error [%d]: %s" % (e.args[0], e.args[1]))
-
+        finally:
+            socket.sendto("""{"status":"ACK"}""", self.client_address)
 #    def finish():
 #       self.shutdown()
 
@@ -89,7 +84,7 @@ class ThreadedUDPServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
 
 
 # Start UDP listening
-HOST, PORT = "localhost", 3535 
+HOST, PORT = "146.232.128.163", 3535 
 udpserver = ThreadedUDPServer((HOST, PORT), ThreadedUDPRequestHandler) 
 udp_thread = threading.Thread(target=udpserver.serve_forever) 
 log.info("UDP serving at port %s %d" % (HOST, PORT)) 
