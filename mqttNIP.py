@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import sys
+import time
 
 import MySQLdb
 from ewhSql import formatDataInsert
@@ -19,7 +20,7 @@ log.info("MQTT NIP started")
 
 #Connect to MQTT broker
 mqttc=mqtt.Client()
-mqttc.connect("localhost",1883,60)
+mqttc.connect("52.31.251.102",1883,60)
 log.info("Connected to MQTT broker")
 
 # Connect to database
@@ -44,7 +45,7 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
             #Map to new names
             ts["ewhId"] = str(tstamp["ID"])
             ts["ver"] = str(tstamp["Ver"])
-            ts["time"] = tstamp["Tstamp"]
+            ts["time"] = int(time.time())
             ts["V"] = tstamp["Vstate"]
             ts["R"] = tstamp["Rstate"]
             ts["G"] = tstamp["Gstate"]
@@ -52,8 +53,8 @@ class ThreadedUDPRequestHandler(SocketServer.BaseRequestHandler):
             ts["T2"] = tstamp["T2"]
             ts["T3"] = tstamp["T3"]
             ts["T4"] = tstamp["T4"]
-            ts["KW"] = int(tstamp["KW"])
-            ts["Wh"] = int(tstamp["KWH"])
+            ts["W"] = int(tstamp["KW"])*1000
+            ts["Wh"] = int(tstamp["KWH"])*1000
             ts["Hd"] = int(tstamp["HLtotal"])
             ts["Hm"] = int(tstamp["HLmin"])
             ts["Cd"] = int(tstamp["CLtotal"])
